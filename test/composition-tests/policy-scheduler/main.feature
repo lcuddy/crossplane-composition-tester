@@ -18,16 +18,31 @@ Feature: Policy scheduler composition
 
   Background:
     Given input claim xr.yaml
-    # following step is optional: default input composition is composition.yaml 
     And input composition composition.yaml
-    # following step is optional: default input functions is functions.yaml
     And input functions functions.yaml
     Then check that no resources are provisioning
 
   @normal
-  Scenario: TODO
-
-    # render 1
-    When crossplane renders the composition
+  Scenario: Policy is assigned only within the scheduled time
+    
+    # render 1: Before schedule window
+    When crossplane renders the composition at "2022-12-31T00:00:00Z"
     Then check that no resources are provisioning
-    # TODO follow the example from service-account.feature and write similar steps to test the policy scheduler composition
+
+    # render 2: During schedule window
+    When crossplane renders the composition at "2023-02-01T00:00:00Z"
+    Then check that 4 resources are provisioning and they are
+      | role-app-1        |
+      | role-app-2        |
+      | role-app-1-policy |
+      | role-app-2-policy |
+    And check that resource role-app-1-policy has parameters
+      | param name                | param value |
+      | spec.forProvider.roleName | role-app-1  |
+    And check that resource role-app-2-policy has parameters
+      | param name                | param value |
+      | spec.forProvider.roleName | role-app-2  |
+
+    # render 3: After schedule window
+    When crossplane renders the composition at "2024-01-01T00:00:00Z"
+    Then check that no resources are provisioning
